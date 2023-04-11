@@ -10,7 +10,7 @@ class ArrayPtr {
     public:
         ArrayPtr() = default;
         ArrayPtr(const ArrayPtr&) = delete;
-        ArrayPtr& operator=(const ArrayPtr&) = delete;
+        ArrayPtr& operator= (const ArrayPtr&) = delete;
 
         explicit ArrayPtr(size_t array_size) {
             if (array_size != 0) {
@@ -18,11 +18,24 @@ class ArrayPtr {
             }
         }
 
-        explicit ArrayPtr(Type* raw_ptr) noexcept : raw_ptr_(raw_ptr)  {}
+        //FIX_1_1
+        ArrayPtr(ArrayPtr&& other) {
+			std::swap(raw_ptr_, other.raw_ptr_);
+			other.raw_ptr_ = nullptr;
+		}
 
         ~ArrayPtr() {
             delete[] raw_ptr_;
         }
+
+        //FIX_1_2
+        ArrayPtr& operator= (ArrayPtr&& other) {
+			if (this != &other) {
+				std::swap(other.raw_ptr_, raw_ptr_);
+			}
+
+			return *this;
+		}
 
         [[nodiscard]] Type* Release() noexcept {
             Type* return_ptr = raw_ptr_;
@@ -48,11 +61,10 @@ class ArrayPtr {
             return raw_ptr_;
         }
 
+        //FIX_2
         void swap(ArrayPtr& other) noexcept {
             if (this != &other) {
-                Type* buffer = other.raw_ptr_;
-                other.raw_ptr_ = raw_ptr_;
-                raw_ptr_ = buffer;
+                std::swap(other.raw_ptr_, raw_ptr_);
             }
         }
 

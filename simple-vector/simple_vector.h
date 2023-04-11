@@ -37,8 +37,9 @@ class SimpleVector {
 
         SimpleVector() noexcept = default;
 
+        //FIX_1
         explicit SimpleVector(size_t size)
-            : SimpleVector(size, std::move(Type{})) {
+            : SimpleVector(size, Type{}) {
         }
 
         SimpleVector(size_t size, const Type &value)
@@ -49,34 +50,37 @@ class SimpleVector {
             std::fill(begin(), end(), value);
         }
 
-        SimpleVector(std::initializer_list<Type> initlist)
+        SimpleVector(std::initializer_list <Type> initlist)
             :   data_(initlist.size()),
                 size_(initlist.size()),
                 capacity_(initlist.size()) {
-
-            std::copy(std::make_move_iterator(initlist.begin()), std::make_move_iterator(initlist.end()), begin());
+            //FIX_2
+            std::copy(initlist.begin(), initlist.end(), begin());
         }
 
         SimpleVector(ReserveProxyObj capacity_to_reserve) {
             Reserve(capacity_to_reserve.GetCapacity());
         }
 
-                SimpleVector(const SimpleVector& other) {
-            Reserve(other.capacity_);
+        //FIX_3
+        SimpleVector(const SimpleVector& other) {
+            data_ = ArrayPtr <Type> (other.size_);
             size_ = other.size_;
 
             std::copy(other.begin(), other.end(), begin());
         }
 
+        //FIX_4
         SimpleVector(SimpleVector&& other)  {
-            data_.swap(other.data_);
-            size_ = other.size_;
-            capacity_ = size_;
-            other.Clear();
+            SimpleVector <Type> empty_vec;
+
+            swap(other);
+            empty_vec.swap(other);
         }
 
+        //FIX_5
         Iterator begin() noexcept {
-            return Iterator(&data_[0]);
+            return Iterator(data_.Get());
         }
 
         Iterator end() noexcept {
@@ -107,8 +111,9 @@ class SimpleVector {
             return capacity_;
         }
 
+        //FIX_6
         bool IsEmpty() const noexcept {
-            return !size_;
+            return size_ > 0;
         }
 
         Type &operator[](size_t index) noexcept {
@@ -174,8 +179,8 @@ class SimpleVector {
             if (capacity_ == size_) {
                 Reserve(std::max(capacity_ * 2, size_t(1)));
             }
-
-            data_[size_++] = std::forward <Type> (item);
+            //FIX_7
+            data_[size_++] = std::move(item);
         }
 
         Iterator Insert(ConstIterator pos, const Type& value) {
@@ -221,17 +226,15 @@ class SimpleVector {
             --size_;
         }
 
+        //FIX_8
         Iterator Erase(ConstIterator pos) {
-            if (begin() <= pos && end() >= pos) {
-                auto index = std::distance(cbegin(), pos);
+            assert(begin() <= pos && end() >= pos);
 
-                std::move(&data_[index + 1], end(), const_cast <Iterator> (pos));
-                --size_;
+            auto index = std::distance(cbegin(), pos);
+            std::move(&data_[index + 1], end(), const_cast <Iterator> (pos));
+            --size_;
 
-                return const_cast <Iterator> (pos);
-            }
-
-            throw std::invalid_argument("Invalid argument"s);
+            return const_cast <Iterator> (pos);
         }
 
         void swap(SimpleVector& other) noexcept {
